@@ -15,6 +15,8 @@ public class SortMain {
 
     private SortMain () {}
 
+
+
     public static void sort(String inputFilename, String outputFilename, long limitedMemory) throws IOException {
         File file = new File(inputFilename);
         if (!file.exists()) {
@@ -41,7 +43,7 @@ public class SortMain {
 
     private static List<String> splitAndSort(File file, long limitedMemory) throws IOException {
         long totalSize = file.length();
-        long limitedMemoryCanBeHold = limitedMemory - 1024* 1024 * 50;
+        long limitedMemoryCanBeHold = limitedMemory - 1024* 1024 * 50;// for storing another thing;
         long sizePerFile = totalSize > limitedMemoryCanBeHold ? limitedMemoryCanBeHold :  totalSize;
 
         int fileCount = 0;
@@ -55,7 +57,7 @@ public class SortMain {
                 buffer.add(line);
                 totalWriteBytes += line.getBytes().length;
                 if (totalWriteBytes > sizePerFile) {
-                    String tempFilename = TEMP_FOLDER + String.format(TEMP_FILE_PATTERN, fileCount);
+                    String tempFilename = TEMP_FOLDER + File.pathSeparator +  String.format(TEMP_FILE_PATTERN, fileCount);
                     writeAndSortData(buffer, tempFilename);
                     fileCount++;
                     totalWriteBytes = 0;
