@@ -6,16 +6,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 
-import static java.nio.file.Files.delete;
 
 public class SortMain {
 
-    private static final String TEMP_FOLDER = System.getProperty("java.io.tmpdir") + File.separator +"external_sort";
+    private static final String TEMP_FOLDER = System.getProperty("java.io.tmpdir") + File.separator + "external_sort";
     public static final String TEMP_FILE_PATTERN = "tempfile_%s";
 
-    private SortMain () {}
-
-
+    private SortMain() {
+    }
 
     public static void sort(String inputFilename, String outputFilename, long limitedMemory) throws IOException {
         File file = new File(inputFilename);
@@ -27,13 +25,12 @@ public class SortMain {
         if (file.length() == 0) {
             System.err.println("File " + inputFilename + " empty");
             return;
-
         }
 
         File parentFolder = new File(TEMP_FOLDER);
-        if(!parentFolder.exists()) {
+        if (!parentFolder.exists())
             parentFolder.delete();
-        }
+
 
         List<String> filesList = splitAndSort(file, limitedMemory);
 
@@ -43,8 +40,8 @@ public class SortMain {
 
     private static List<String> splitAndSort(File file, long limitedMemory) throws IOException {
         long totalSize = file.length();
-        long limitedMemoryCanBeHold = limitedMemory - 1024* 1024 * 50;// for storing another thing;
-        long sizePerFile = totalSize > limitedMemoryCanBeHold ? limitedMemoryCanBeHold :  totalSize;
+        long limitedMemoryCanBeHold = limitedMemory - 1024 * 1024 * 50;//50MB for storing remained thing;
+        long sizePerFile = totalSize > limitedMemoryCanBeHold ? limitedMemoryCanBeHold : totalSize;
 
         int fileCount = 0;
         int totalWriteBytes = 0;
@@ -57,7 +54,7 @@ public class SortMain {
                 buffer.add(line);
                 totalWriteBytes += line.getBytes().length;
                 if (totalWriteBytes > sizePerFile) {
-                    String tempFilename = TEMP_FOLDER + File.pathSeparator +  String.format(TEMP_FILE_PATTERN, fileCount);
+                    String tempFilename = TEMP_FOLDER + File.separator + String.format(TEMP_FILE_PATTERN, fileCount);
                     writeAndSortData(buffer, tempFilename);
                     fileCount++;
                     totalWriteBytes = 0;
@@ -70,7 +67,7 @@ public class SortMain {
         }
 
         if (!buffer.isEmpty()) {
-            String tempFilename = TEMP_FOLDER + File.pathSeparator + String.format(TEMP_FILE_PATTERN, fileCount);
+            String tempFilename = TEMP_FOLDER + File.separator + String.format(TEMP_FILE_PATTERN, fileCount);
             writeAndSortData(buffer, tempFilename);
             filesList.add(tempFilename);
         }
@@ -96,31 +93,34 @@ public class SortMain {
         for (String input : filesList)
             readerCircularList.add(new BufferedReader(new FileReader(input)));
 
-        for(int i = 0; i < filesList.size();i++)
+        for (int i = 0; i < filesList.size(); i++)
             minHeap.add(readerCircularList.getNextCircularData().readLine());
 
         try (PrintWriter outputWriter = new PrintWriter(new FileWriter(outputFilename))) {
 
             BufferedReader currentReader = null;
-            while (!minHeap.isEmpty()) {
+            while (!minHeap.isEmpty() || currentReader == null) {
                 outputWriter.println(minHeap.poll());
                 String line;
-                if ((currentReader = readerCircularList.getNextCircularData()) != null && (line = currentReader.readLine()) != null) {
+                if ((currentReader = readerCircularList.getNextCircularData()) == null)
+                    continue;
+
+                if ((line = currentReader.readLine()) != null)
                     minHeap.offer(line);
+                else {
+                    BufferedReader br = readerCircularList.removeElement(currentReader);
+                    if (br != null)
+                        br.close();
                 }
-
             }
+
+            for(String filename: filesList)
+                Files.delete(Paths.get(filename));
+
         }
 
-        for(int i = 0; i < filesList.size();i++) {
-            BufferedReader br =  readerCircularList.getNextCircularData();
-            if(br != null)
-                br.close();
-        }
-        for(String filename: filesList) {
-            delete(Paths.get(filename));
-        }
     }
+
 
     static class Node<T> {
         T data;
@@ -130,17 +130,28 @@ public class SortMain {
         }
 
         Node<T> next;
+
     }
 
     static class CircularList<T> {
         Node<T> head;
         Node<T> current;
+        Node<T> tail;
 
         public void add(T data) {
             Node newNode = new Node(data);
-            Node temp = head;
-            head = newNode;
-            head.next = temp;
+            if (head == null) {
+                head = tail = newNode;
+                newNode.next = head;
+            } else {
+                tail.next = newNode;
+                tail = newNode;
+
+            }
+            newNode.next = head;
+            //
+            if (head == tail)
+                head.next = newNode;
         }
 
         public T getNextCircularData() {
@@ -151,8 +162,37 @@ public class SortMain {
             Node<T> result = current;
             current = current.next;
             return result.data;
+        }
+
+        public T removeElement(T element) {
+
+            if (head == null)
+                return null;
+            if (current == null)
+                current = head;
+            Node<T> currentPointer = head;
+            Node<T> previous = null;
+
+
+            while (true) {
+                if (element == currentPointer.data) {
+                    if(currentPointer == head) {
+                        head = head.next;
+                        tail.next = head;
+                    } else
+                        previous.next = currentPointer.next;
+
+                    break;
+                }
+                previous = currentPointer;
+                currentPointer = currentPointer.next;
+            }
+            if(currentPointer != null)
+                return currentPointer.data;
+            return null;
 
         }
+
     }
 
     public static void main(String[] args) throws IOException {
@@ -168,10 +208,11 @@ public class SortMain {
         long limitedMemory = scanner.nextLong();
         System.out.println("Running...");
         long start = System.currentTimeMillis();
-        sort(inputFilename, outputFilename, limitedMemory);
+        sort(inputFilename, outputFilename, limitedMemory*1024*1024);
 
         System.out.println("Done! Took " + (System.currentTimeMillis() - start)+  " ms to finish ");
 
     }
 }
+
 
