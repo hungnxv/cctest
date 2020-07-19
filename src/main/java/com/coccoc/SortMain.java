@@ -32,7 +32,7 @@ public class SortMain {
             parentFolder.delete();
 
 
-        List<String> filesList = splitAndSort(file, limitedMemory);
+        List<String> filesList = splitAndSort(file, limitedMemory * 1024*1024);
 
         mergeKSortedFiles(outputFilename, filesList);
 
@@ -208,7 +208,7 @@ public class SortMain {
         long limitedMemory = scanner.nextLong();
         System.out.println("Running...");
         long start = System.currentTimeMillis();
-        sort(inputFilename, outputFilename, limitedMemory*1024*1024);
+        sort(inputFilename, outputFilename, limitedMemory);
 
         System.out.println("Done! Took " + (System.currentTimeMillis() - start)+  " ms to finish ");
 
